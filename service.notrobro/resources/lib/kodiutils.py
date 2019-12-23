@@ -23,7 +23,7 @@ def show_settings():
 
 
 def get_setting(setting):
-    return ADDON.getSetting(setting).strip().decode('utf-8')
+    return ADDON.getSetting(setting).strip()
 
 
 def set_setting(setting, value):
@@ -56,10 +56,7 @@ def kodi_json_request(params):
     data = json.dumps(params)
     request = xbmc.executeJSONRPC(data)
 
-    try:
-        response = json.loads(request)
-    except UnicodeDecodeError:
-        response = json.loads(request.decode('utf-8', 'ignore'))
+    response = json.loads(request)
 
     try:
         if 'result' in response:
