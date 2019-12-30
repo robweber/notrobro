@@ -145,10 +145,16 @@ class Detector:
             while out[current] != " ":
                 time += out[current]
                 current += 1
-            times.append(time)
+            times.append(float(time))
         if category is "intro":
             del times[-1]
         return times
+
+
+    def generate_timestring(self, start, end, action):
+        time_string = "%f %f %d" % (start, end, action)
+
+        return time_string
 
 
     def get_duration(self, out):
@@ -213,7 +219,7 @@ class Detector:
             outro_end_time = -300
             begin = total_time + outro_end_time
             for i in range(len(scene_transitions)):
-                scene_transitions[i] = str(float(scene_transitions[i]) + begin)
+                scene_transitions[i] = scene_transitions[i] + begin
         name, _ = os.path.splitext(path)
         name = os.path.join(self.jpg_folder, os.path.basename(name))
         hashlist, _ = self.get_hash_from_dir(name)
@@ -250,14 +256,11 @@ class Detector:
                 intro_end_prev = scene_prev[indices[-1][0] + 1]
                 intro_end_cur = scene_cur[indices[-1][1] + 1]
 
+                # generate cut in edl files (4=intro)
                 if 'intro' not in result[video_prev]:
-                    time_string = str(intro_start_prev) + " " + \
-                        str(intro_end_prev) + " 4"  # cut in edl files
-                    result[video_prev]['intro'] = time_string
+                    result[video_prev]['intro'] = self.generate_timestring(intro_start_prev, intro_end_prev, 4)
 
-                time_string = str(intro_start_cur) + " " + \
-                        str(intro_end_cur) + " 4"  # cut in edl files
-                result[videos_process[i]]['intro'] = time_string
+                result[videos_process[i]]['intro'] = self.generate_timestring(intro_start_cur, intro_end_cur, 4)
             else:
                 print('\tNo intro found %s : %s' % (video_prev, videos_process[i]))
 
@@ -293,14 +296,11 @@ class Detector:
                 except:
                     outro_end_cur = scene_cur[indices[-1][1]]
 
+                # generate cut in edl file (5=outro)
                 if 'outro' not in result[video_prev]:
-                    time_string = str(outro_start_prev) + " " + \
-                        str(outro_end_prev) + " 5"  # cut in edl files
-                    result[video_prev]['outro'] = time_string
+                    result[video_prev]['outro'] = self.generate_timestring(outro_start_prev, outro_end_prev, 5)
 
-                time_string = str(outro_start_cur) + " " + \
-                    str(outro_end_cur) + " 5"  # cut in edl files
-                result[videos_process[i]]['outro'] = time_string
+                result[videos_process[i]]['outro'] = self.generate_timestring(outro_start_cur, outro_end_cur, 5)
             else:
                 print('\tNo outro found %s : %s' % (video_prev, videos_process[i]))
 
