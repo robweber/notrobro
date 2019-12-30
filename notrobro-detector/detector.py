@@ -152,6 +152,11 @@ class Detector:
 
 
     def generate_timestring(self, start, end, action):
+        # if start <= 20 seconds from start of video, assume beginning
+        if(start <= 20):
+            start = 0
+
+        # edl cut format
         time_string = "%f %f %d" % (start, end, action)
 
         return time_string
