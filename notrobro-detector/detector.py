@@ -157,7 +157,7 @@ class Detector:
             start = 0
 
         # edl cut format
-        time_string = "%f %f %d" % (start, end, action)
+        time_string = "%0.2f %0.2f %d" % (start, end, action)
 
         return time_string
 
