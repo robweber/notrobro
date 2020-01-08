@@ -52,9 +52,12 @@ def main():
     for root, dirs, files, in os.walk(args.path):
         missing = missing + find_missing(root, files)
 
-    logging.info('Missing edl files for:')
-    for f in missing:
-        logging.info(f)
+    if(len(missing) > 0):
+        logging.info('Missing EDL files for:')
+        for f in missing:
+            logging.info(f)
+    else:
+        logging.info('No missing EDL files in this path')
 
 if __name__ == '__main__':
     main()
