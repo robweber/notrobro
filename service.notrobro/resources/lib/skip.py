@@ -17,6 +17,7 @@ class Skip(xbmcgui.WindowXMLDialog):
         if self.isButtonVisible is False:
             self.show()
             self.setVisibility()
+            self.setFocusId(1)
 
     def onClick(self, controlID):
         logger.debug('Notrobro onclick: ' + str(controlID))
