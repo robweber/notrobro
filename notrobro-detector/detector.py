@@ -150,7 +150,7 @@ class Detector:
 
 
     def compare_videos(self, video1, video2, category, video_list):
-        logging.info('comparing %s with %s' % (os.path.basename(video1), os.path.basename(video2)))
+        logging.debug('comparing %s with %s' % (os.path.basename(video1), os.path.basename(video2)))
         result = {}
         first_hash, first_scene = self.get_hash_video(video1, category)
         second_hash, second_scene = self.get_hash_video(video2, category)
@@ -173,8 +173,8 @@ class Detector:
                     second_end = second_scene[indices[-1][1]]
 
 
-                result['first'] = (first_start, first_end)
-                result['second'] = (second_start, second_end)
+                result['video1'] = {'file': video1, 'timings': (first_start, first_end)}
+                result['video2'] = {'file': video2, 'timings': (second_start, second_end)}
 
             except IndexError:
                 logging.error('error finding scene index')
@@ -188,7 +188,7 @@ class Detector:
 
     def gen_timings_processed(self, videos_process, edl_found):
         result = {}  # dict containing path: {intro,outro} information
-        timings_found = {'intro': edl_found, 'outro': edl_found}  # list of videos that have succeeded in finding intros/outros, used for regressive comparisons
+        timings_found = {'intro': copy.deepcopy(edl_found), 'outro': copy.deepcopy(edl_found)}  # list of videos that have succeeded in finding intros/outros, used for regressive comparisons
         categories = ['intro', 'outro']
 
         # Processing for Intros
@@ -200,22 +200,24 @@ class Detector:
 
             # run same loop for each category (intro/outro)
             for category in categories:
-                # find times
+                # find times, result dict is {'video1': {'file':'', 'timings':(), .....}
                 times = self.compare_videos(video_prev, videos_process[i], category, copy.deepcopy(timings_found[category]))
 
                 if(len(times) > 0):
 
-                    if category not in result[video_prev] and 'first' in times:
-                        result[video_prev][category] = self.make_timestring(times['first'], category)
+                    # use file returned, not video_prev as it is not guarenteed that is the match
+                    if 'video1' in times and category not in result[times['video1']['file']]:
+                        result[times['video1']['file']][category] = self.make_timestring(times['video1']['timings'], category)
 
-                    timings_found[category].append(video_prev)
+                    if(times['video1']['file'] not in timings_found[category]):
+                        logging.debug('adding %s to found list for: %s' % (category, times['video1']['file']))
+                        timings_found[category].append(times['video1']['file'])
 
-                    if 'second' in times:
-                        result[videos_process[i]][category] = self.make_timestring(times['second'], category)
+                    if 'video2' in times:
+                        result[videos_process[i]][category] = self.make_timestring(times['video2']['timings'], category)
                 else:
                     logging.info('No %s found for: %s' % (category, os.path.basename(videos_process[i])))
 
-                logging.info('%s: %s' % (category, str(timings_found[category])))
             video_prev = videos_process[i]
 
         return result
