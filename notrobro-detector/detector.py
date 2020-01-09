@@ -121,6 +121,7 @@ class Detector:
 
 
     def get_hash_video(self, path, category):
+        logging.info('Processing %s for %s' % (category, os.path.basename(path)))
         scene_transitions = self.get_scene_transitions(path, category)
         if category == "outro":
             duration_file = os.path.join(self.jpg_folder, "duration")
@@ -143,95 +144,79 @@ class Detector:
 
         return hashlist, scene_transitions
 
+    def make_timestring(self, timings, category):
+        # EDL format is "start end action"
+        actions = {'intro': 4, 'outro': 5}
+        return "%s %s %d" % (str(timings[0]), str(timings[1]), actions[category])
 
-    def gen_timings_processed(self, videos_process):
+
+    def compare_videos(self, video1, video2, category, video_list):
+        logging.info('comparing %s with %s' % (os.path.basename(video1), os.path.basename(video2)))
+        result = {}
+        first_hash, first_scene = self.get_hash_video(video1, category)
+        second_hash, second_scene = self.get_hash_video(video2, category)
+
+        if(category == 'intro'):
+            indices = self.method.get_common_intro(first_hash, second_hash)
+        else:
+            indices = self.method.get_common_outro(first_hash, second_hash)
+
+        if(len(indices) > 0):
+            try:
+                first_start = first_scene[indices[0][0]]
+                second_start = second_scene[indices[0][1]]
+
+                if(category == 'intro'):
+                    first_end = first_scene[indices[-1][0] + 1]
+                    second_end = second_scene[indices[-1][1] + 1]
+                else:
+                    first_end = first_scene[indices[-1][0]]
+                    second_end = second_scene[indices[-1][1]]
+
+
+                result['first'] = (first_start, first_end)
+                result['second'] = (second_start, second_end)
+
+            except IndexError:
+                logging.error('error finding scene index')
+
+        # if nothing was found attempt to try another video comparison
+        if(len(result) == 0):
+            if(len(video_list) > 0):
+                result = self.compare_videos(video_list.pop(), video2, category, video_list)
+
+        return result
+
+    def gen_timings_processed(self, videos_process, edl_found):
         result = {}  # dict containing path: {intro,outro} information
+        timings_found = edl_found  # list of videos that have succeeded in finding intros/outros, used for regressive comparisons
+        categories = ['intro', 'outro']
 
         # Processing for Intros
-        logging.info("Detecting intro for: %s" % os.path.basename(videos_process[0]))
-
         video_prev = videos_process[0]
         result[video_prev] = {}
-        hash_prev, scene_prev = self.get_hash_video(
-            videos_process[0], "intro")
 
         for i in range(1, len(videos_process)):
-            logging.info("Detecting intro for: %s" % os.path.basename(videos_process[i]))
             result[videos_process[i]] = {}
 
-            hash_cur, scene_cur = self.get_hash_video(
-                videos_process[i], "intro")
-            indices = self.method.get_common_intro(hash_prev, hash_cur)
+            # run same loop for each category (intro/outro)
+            for category in categories:
+                # find times
+                times = self.compare_videos(video_prev, videos_process[i], category, copy.deepcopy(timings_found))
 
-            if(len(indices) > 0):
-                try:
-                    intro_start_prev = scene_prev[indices[0][0]]
-                    intro_start_cur = scene_cur[indices[0][1]]
+                if(len(times) > 0):
 
-                    intro_end_prev = scene_prev[indices[-1][0] + 1]
-                    intro_end_cur = scene_cur[indices[-1][1] + 1]
+                    if category not in result[video_prev] and 'first' in times:
+                        result[video_prev][category] = self.make_timestring(times['first'], category)
 
-                    if 'intro' not in result[video_prev]:
-                        time_string = str(intro_start_prev) + " " + \
-                            str(intro_end_prev) + " 4"  # cut in edl files
-                        result[video_prev]['intro'] = time_string
+                    timings_found.append(video_prev)
 
-                    time_string = str(intro_start_cur) + " " + \
-                            str(intro_end_cur) + " 4"  # cut in edl files
-                    result[videos_process[i]]['intro'] = time_string
-                except IndexError:
-                    logging.error('Error finding scene index')
-
+                    if 'second' in times:
+                        result[videos_process[i]][category] = self.make_timestring(times['second'], category)
             else:
-                logging.info('No intro found for: %s' % os.path.basename(videos_process[i]))
-                logging.debug('Comparison file: %s' % os.path.basename(video_prev))
+                logging.info('No %s found for: %s' % (category, os.path.basename(videos_process[i])))
 
             video_prev = videos_process[i]
-            hash_prev = hash_cur
-            scene_prev = scene_cur
-
-        # Processing for Outros
-        logging.info('Detecting outro for: %s' % os.path.basename(videos_process[0]))
-
-        video_prev = videos_process[0]
-        hash_prev, scene_prev = self.get_hash_video(
-            videos_process[0], "outro")
-
-        for i in range(1, len(videos_process)):
-            logging.info('Detecting outro for: %s' % os.path.basename(videos_process[i]))
-            hash_cur, scene_cur = self.get_hash_video(
-                videos_process[i], "outro")
-            indices = self.method.get_common_outro(hash_prev, hash_cur)
-
-            if(len(indices) > 0):
-                outro_start_prev = scene_prev[indices[0][0]]
-                outro_start_cur = scene_cur[indices[0][1]]
-
-                try:
-                    outro_end_prev = scene_prev[indices[-1][0] + 1]
-                except:
-                    outro_end_prev = scene_prev[indices[-1][0]]
-
-                try:
-                    outro_end_cur = scene_cur[indices[-1][1] + 1]
-                except:
-                    outro_end_cur = scene_cur[indices[-1][1]]
-
-                if 'outro' not in result[video_prev]:
-                    time_string = str(outro_start_prev) + " " + \
-                        str(outro_end_prev) + " 5"  # cut in edl files
-                    result[video_prev]['outro'] = time_string
-
-                time_string = str(outro_start_cur) + " " + \
-                    str(outro_end_cur) + " 5"  # cut in edl files
-                result[videos_process[i]]['outro'] = time_string
-            else:
-                logging.info('No outro found for: %s' % os.path.basename(videos_process[i]))
-                logging.debug('Comparison file: %s' % os.path.basename(video_prev))
-
-            video_prev = videos_process[i]
-            hash_prev = hash_cur
-            scene_prev = scene_cur
 
         return result
 
@@ -278,31 +263,25 @@ class Detector:
 
         # get videos which don't have a skip timings file (currently edl) according to --force parameter
         videos_process = []
+        edl_found = []
         if force is False:
             for file in videos:
                 filename, _ = os.path.splitext(file)
                 suffix = '.edl'
                 if (filename + suffix) not in all_files:
                     videos_process.append(file)
+                else:
+                    logging.info('EDL found for %s' % os.path.basename(file))
+                    edl_found.append(file)
         else:
             videos_process = copy.deepcopy(videos)
 
         if len(videos_process) == 0:
             logging.info("No videos to process.")
-        elif len(videos_process) == 1 and len(videos) >= 2:
-            vid = videos_process[0]
-            videos.sort()  # basic ordering for videos by sorting based on season and episode
-            try:
-                comp_vid = videos[videos.index(vid) - 1]
-            except:
-                comp_vid = videos[videos.index(vid) + 1]
-            timings = self.gen_timings_processed(
-                [comp_vid, vid])
-            self.create_edl(timings)
         else:
             videos_process.sort()  # basic ordering for videos by sorting based on season and episode
             timings = self.gen_timings_processed(
-                videos_process)
+                videos_process, edl_found)
             self.create_edl(timings)
 
         if(not self.debug):
