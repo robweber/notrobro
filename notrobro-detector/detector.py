@@ -90,11 +90,12 @@ class Detector:
         # in seconds from end of video (can be put in arguments as well)
         outro_end_time = -300
 
+        # create jpg directory for video frames
         name, _ = os.path.splitext(path)
-        name = os.path.join(self.jpg_folder, os.path.basename(name))
-        if os.path.exists(name):
-            shutil.rmtree(name)
-        os.mkdir(name)
+        name = os.path.join(self.jpg_folder, '%s_%s' % (os.path.basename(name), category))
+        if not os.path.exists(name):
+            #shutil.rmtree(name)
+            os.mkdir(name)
 
         input_file = path
 
@@ -137,10 +138,8 @@ class Detector:
             for i in range(len(scene_transitions)):
                 scene_transitions[i] = str(float(scene_transitions[i]) + begin)
         name, _ = os.path.splitext(path)
-        name = os.path.join(self.jpg_folder, os.path.basename(name))
+        name = os.path.join(self.jpg_folder, '%s_%s' % (os.path.basename(name), category))
         hashlist, _ = self.get_hash_from_dir(name)
-        if os.path.exists(name) and not self.debug:
-            shutil.rmtree(name)
 
         return hashlist, scene_transitions
 
