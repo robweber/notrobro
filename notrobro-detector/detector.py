@@ -188,7 +188,7 @@ class Detector:
 
     def gen_timings_processed(self, videos_process, edl_found):
         result = {}  # dict containing path: {intro,outro} information
-        timings_found = edl_found  # list of videos that have succeeded in finding intros/outros, used for regressive comparisons
+        timings_found = {'intro': edl_found, 'outro': edl_found}  # list of videos that have succeeded in finding intros/outros, used for regressive comparisons
         categories = ['intro', 'outro']
 
         # Processing for Intros
@@ -201,20 +201,21 @@ class Detector:
             # run same loop for each category (intro/outro)
             for category in categories:
                 # find times
-                times = self.compare_videos(video_prev, videos_process[i], category, copy.deepcopy(timings_found))
+                times = self.compare_videos(video_prev, videos_process[i], category, copy.deepcopy(timings_found[category]))
 
                 if(len(times) > 0):
 
                     if category not in result[video_prev] and 'first' in times:
                         result[video_prev][category] = self.make_timestring(times['first'], category)
 
-                    timings_found.append(video_prev)
+                    timings_found[category].append(video_prev)
 
                     if 'second' in times:
                         result[videos_process[i]][category] = self.make_timestring(times['second'], category)
-            else:
-                logging.info('No %s found for: %s' % (category, os.path.basename(videos_process[i])))
+                else:
+                    logging.info('No %s found for: %s' % (category, os.path.basename(videos_process[i])))
 
+                logging.info('%s: %s' % (category, str(timings_found[category])))
             video_prev = videos_process[i]
 
         return result
