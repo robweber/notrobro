@@ -122,7 +122,6 @@ class Detector:
 
 
     def get_hash_video(self, path, category):
-        logging.info('Processing %s for %s' % (category, os.path.basename(path)))
         scene_transitions = self.get_scene_transitions(path, category)
         if category == "outro":
             duration_file = os.path.join(self.jpg_folder, "duration")
@@ -150,7 +149,7 @@ class Detector:
 
 
     def compare_videos(self, video1, video2, category, video_list):
-        logging.debug('comparing %s with %s' % (os.path.basename(video1), os.path.basename(video2)))
+        logging.info('processing %s for %s, %d tries left' % (category, os.path.basename(video2), len(video_list)))
         result = {}
         first_hash, first_scene = self.get_hash_video(video1, category)
         second_hash, second_scene = self.get_hash_video(video2, category)
