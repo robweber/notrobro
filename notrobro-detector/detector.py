@@ -241,8 +241,8 @@ class Detector:
 
                 if(len(times) > 0):
 
-                    # use file returned, not video_prev as it is not guarenteed that is the match
-                    if 'video1' in times and category not in result[times['video1']['file']]:
+                    # check that video1 exists, we want an EDL for it (precence in result), and we haven't found an EDL already
+                    if 'video1' in times and times['video1']['file'] in result and category not in result[times['video1']['file']]:
                         result[times['video1']['file']][category] = self.make_timestring(times['video1']['timings'], category)
 
                     if(times['video1']['file'] not in timings_found[category]):
