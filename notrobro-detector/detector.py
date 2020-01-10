@@ -277,8 +277,12 @@ class Detector:
         else:
             videos_process = copy.deepcopy(videos)
 
-        if len(videos_process) == 0:
-            logging.info("No videos to process.")
+        if len(videos_process) == 1 and len(edl_found) > 0:
+            # need at least 2 videos to start processing
+            videos_process.append(edl_found.pop())
+
+        if(len(videos_process) < 2):
+            logging.info("No videos to process in %s" % path)
         else:
             videos_process.sort()  # basic ordering for videos by sorting based on season and episode
             timings = self.gen_timings_processed(
