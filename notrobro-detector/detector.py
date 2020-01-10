@@ -288,6 +288,14 @@ class Detector:
         for ext in ('*.mp4', '*.mkv', '*.avi', '*.mov', '*.wmv'):  # video formats - extendable
             videos.extend(glob.glob(os.path.join(path, ext)))
 
+        # read in any manually excluded files
+        exclude_list = []
+        if(os.path.exists(os.path.join(path, 'edl_exclude.txt'))):
+            logging.debug('Found exclude file in %s' % path)
+            with open(os.path.join(path, 'edl_exclude.txt')) as f:
+                exclude_list = f.readlines()
+            exclude_list = list(map(lambda x: x.strip(), exclude_list))
+
         # if there is only 1 video in the directory
         if len(videos) == 1:
             logging.info("Add at least 1 more video of the TV show to the directory for processing.")
@@ -308,7 +316,10 @@ class Detector:
                 filename, _ = os.path.splitext(file)
                 suffix = '.edl'
                 if (filename + suffix) not in all_files:
-                    videos_process.append(file)
+                    if(os.path.basename(file) not in exclude_list):
+                        videos_process.append(file)
+                    else:
+                        logging.info('skipping %s - in exclude list' % os.path.basename(file))
                 else:
                     parser = EDLReader(filename + suffix)
 
