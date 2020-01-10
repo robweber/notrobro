@@ -14,6 +14,43 @@ import time
 import logging
 
 
+class EDLReader:
+    times = None
+
+    def __init__(self, file):
+        self.times = self._getTimings(file)
+
+    def _getTimings(self, file):
+        result = []
+        if(os.path.exists(file)):
+            with open(file, 'r') as f:
+                result = f.readlines()
+
+        return result
+
+    def _hasAction(self, action_id):
+        result = False
+
+        i = 0
+        while(i < len(self.times) and not result):
+            # for each line check if the EDL action is the one we're looking for
+            split_line = self.times[i].strip().split()
+
+            if(int(split_line[2]) == action_id):
+                result = True
+            i = i + 1
+
+        return result
+
+    @property
+    def hasIntro(self):
+        return self._hasAction(4)
+
+    @property
+    def hasOutro(self):
+        return self._hasAction(5)
+
+
 class Detector:
     jpg_folder = './jpgs'  # location of jpg images from video
     threshold = 0.35  # default threshold, can be passed as arg
@@ -185,9 +222,9 @@ class Detector:
 
         return result
 
-    def gen_timings_processed(self, videos_process, edl_found):
+    def gen_timings_processed(self, videos_process, intro_found, outro_found):
         result = {}  # dict containing path: {intro,outro} information
-        timings_found = {'intro': copy.deepcopy(edl_found), 'outro': copy.deepcopy(edl_found)}  # list of videos that have succeeded in finding intros/outros, used for regressive comparisons
+        timings_found = {'intro': intro_found, 'outro': outro_found}  # list of videos that have succeeded in finding intros/outros, used for regressive comparisons
         categories = ['intro', 'outro']
 
         # Processing for Intros
@@ -264,7 +301,8 @@ class Detector:
 
         # get videos which don't have a skip timings file (currently edl) according to --force parameter
         videos_process = []
-        edl_found = []
+        intro_found = []
+        outro_found = []
         if force is False:
             for file in videos:
                 filename, _ = os.path.splitext(file)
@@ -272,21 +310,34 @@ class Detector:
                 if (filename + suffix) not in all_files:
                     videos_process.append(file)
                 else:
-                    logging.info('EDL found for %s' % os.path.basename(file))
-                    edl_found.append(file)
+                    parser = EDLReader(filename + suffix)
+
+                    if(parser.hasIntro):
+                        logging.info('Intro found for %s' % os.path.basename(file))
+                        intro_found.append(file)
+
+                    if(parser.hasOutro):
+                        logging.info('Outro found for %s' % os.path.basename(file))
+                        outro_found.append(file)
         else:
             videos_process = copy.deepcopy(videos)
 
-        if len(videos_process) == 1 and len(edl_found) > 0:
+        if len(videos_process) == 1 and len(videos) > 1:
             # need at least 2 videos to start processing
-            videos_process.append(edl_found.pop())
+            vid = videos_process[0]
+            try:
+                comp_vid = videos[videos.index(vid) + 1]
+            except:
+                comp_vid = videos[videos.index(vid) - 1]
+
+            videos_process.append(comp_vid)
 
         if(len(videos_process) < 2):
             logging.info("No videos to process in %s" % path)
         else:
             videos_process.sort()  # basic ordering for videos by sorting based on season and episode
             timings = self.gen_timings_processed(
-                videos_process, edl_found)
+                videos_process, intro_found, outro_found)
             self.create_edl(timings)
 
         if(not self.debug):
