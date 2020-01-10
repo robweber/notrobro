@@ -9,9 +9,22 @@ def filter_videos(files):
     videos = list(filter(lambda f: os.path.splitext(f)[1] in ext_list, files))
     return videos
 
+def read_exclude(path):
+    result = []
+
+    if(os.path.exists(os.path.join(path,'edl_exclude.txt'))):
+        with open(os.path.join(path, 'edl_exclude.txt'), 'r') as f:
+            result = f.readlines()
+
+        result = list(map(lambda x: x.strip(), result))
+
+    return result
+
 def find_missing(root, files, exclude):
     missing = []
 
+    # get a list of explicity excluded files along with all videos in the folder
+    exclude_list = read_exclude(root)
     videos = filter_videos(files)
 
     suffix = '.edl'
@@ -19,7 +32,7 @@ def find_missing(root, files, exclude):
         logging.debug('checking %s' % f)
         filename, _ = os.path.splitext(f)
         if((filename + suffix) not in files):
-            missing.append(os.path.join(root,f))
+            missing.append({'file': os.path.join(root,f), 'exclude': (f in exclude_list)})
 
     if(len(missing) > 0 and exclude):
         generate_exclude(root, missing)
@@ -31,7 +44,7 @@ def generate_exclude(root, files):
 
     with open(os.path.join(root, 'edl_exclude.txt'), 'w') as w:
         for f in files:
-            w.write(os.path.basename(f) + "\n")
+            w.write(os.path.basename(f['file']) + "\n")
 
 def main():
     argparse = ArgumentParser()
@@ -66,7 +79,10 @@ def main():
     if(len(missing) > 0):
         logging.info('Missing EDL files for:')
         for f in missing:
-            logging.info(f)
+            if(f['exclude']):
+                logging.info('%s (EXCLUDED)' % f['file'])
+            else:
+                logging.info(f['file'])
     else:
         logging.info('No missing EDL files in this path')
 
