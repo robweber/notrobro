@@ -9,7 +9,7 @@ def filter_videos(files):
     videos = list(filter(lambda f: os.path.splitext(f)[1] in ext_list, files))
     return videos
 
-def find_missing(root, files):
+def find_missing(root, files, exclude):
     missing = []
 
     videos = filter_videos(files)
@@ -21,7 +21,17 @@ def find_missing(root, files):
         if((filename + suffix) not in files):
             missing.append(os.path.join(root,f))
 
+    if(len(missing) > 0 and exclude):
+        generate_exclude(root, missing)
+
     return missing
+
+def generate_exclude(root, files):
+    logging.info('Generating exclude files %s' % root)
+
+    with open(os.path.join(root, 'edl_exclude.txt'), 'w') as w:
+        for f in files:
+            w.write(os.path.basename(f) + "\n")
 
 def main():
     argparse = ArgumentParser()
@@ -29,6 +39,7 @@ def main():
                           help='TV show directory path to check for edl files', required=True)
     argparse.add_argument('--log', '-l', type=str, choices=['info', 'debug'],
                           help='Run in debug mode', default='info')
+    argparse.add_argument('--gen-exclude', '-e', action='store_true', help='generate an exclude file for the detector based on the missing files')
     args = argparse.parse_args()
 
     # set the log level
@@ -50,7 +61,7 @@ def main():
 
     missing = []
     for root, dirs, files, in os.walk(args.path):
-        missing = missing + find_missing(root, files)
+        missing = missing + find_missing(root, files, args.gen_exclude)
 
     if(len(missing) > 0):
         logging.info('Missing EDL files for:')
