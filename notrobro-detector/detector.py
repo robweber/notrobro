@@ -1,6 +1,7 @@
 from methods import AllMethods, AllMatchMethod, LongestContinousMethod
 from argparse import ArgumentParser
 from PIL import Image
+import random
 import signal
 import sys
 import os
@@ -324,24 +325,21 @@ class Detector:
                     parser = EDLReader(filename + suffix)
 
                     if(parser.hasIntro):
-                        logging.info('Intro found for %s' % os.path.basename(file))
+                        logging.debug('Intro found for %s' % os.path.basename(file))
                         intro_found.append(file)
 
                     if(parser.hasOutro):
-                        logging.info('Outro found for %s' % os.path.basename(file))
+                        logging.debug('Outro found for %s' % os.path.basename(file))
                         outro_found.append(file)
         else:
             videos_process = copy.deepcopy(videos)
 
         if len(videos_process) == 1 and len(videos) > 1:
             # need at least 2 videos to start processing
-            vid = videos_process[0]
-            try:
-                comp_vid = videos[videos.index(vid) + 1]
-            except:
-                comp_vid = videos[videos.index(vid) - 1]
-
-            videos_process.append(comp_vid)
+            index = 0
+            while(videos[index] != videos_process[0] and videos[index] not in exclude_list):
+                index = random.randint(0,len(videos) - 1)
+            videos_process.append(videos[index])
 
         if(len(videos_process) < 2):
             logging.info("No videos to process in %s" % path)
