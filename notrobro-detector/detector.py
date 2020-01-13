@@ -56,10 +56,11 @@ class Detector:
     jpg_folder = './jpgs'  # location of jpg images from video
     threshold = 0.35  # default threshold, can be passed as arg
     method = None  # detector method class
+    categories = None  # the categories to run detection on (intro, outro)
     debug = False
 
 
-    def  __init__(self, threshold, method, level='info'):
+    def  __init__(self, threshold, method, categories=['intro','outro'], level='info'):
         self.threshold = threshold
 
         if(level.lower() == 'debug'):
@@ -71,6 +72,8 @@ class Detector:
             self.method = LongestContinousMethod()
         elif(method == 'all'):
             self.method = AllMethods()
+
+        self.categories = categories
 
 
     def get_hash(self, path):
@@ -226,7 +229,6 @@ class Detector:
     def gen_timings_processed(self, videos_process, intro_found, outro_found):
         result = {}  # dict containing path: {intro,outro} information
         timings_found = {'intro': intro_found, 'outro': outro_found}  # list of videos that have succeeded in finding intros/outros, used for regressive comparisons
-        categories = ['intro', 'outro']
 
         # Processing for Intros
         video_prev = videos_process[0]
@@ -235,8 +237,8 @@ class Detector:
         for i in range(1, len(videos_process)):
             result[videos_process[i]] = {}
 
-            # run same loop for each category (intro/outro)
-            for category in categories:
+            # run same loop for each category (intro and outro by default)
+            for category in self.categories:
                 # find times, result dict is {'video1': {'file':'', 'timings':(), .....}
                 times = self.compare_videos(video_prev, videos_process[i], category, copy.deepcopy(timings_found[category]))
 
@@ -389,7 +391,7 @@ class DetectorThreadManager():
 
     def start_thread(self, dir):
         logging.info('Starting detector in: %s' % dir)
-        detector = Detector(self.args.threshold, self.args.method, self.args.log)
+        detector = Detector(self.args.threshold, self.args.method, self.args.categories, self.args.log)
         detector.generate(dir, self.args.force)
 
 
@@ -407,6 +409,8 @@ def main():
                           help='Threshold for scene change detection (default=0.35)', default='0.35')
     argparse.add_argument('--method', '-m', type=str, choices=["all_match", "longest_common", "all"],
                           help='Method used for timings generation (all, all_match, or longest_common). "all" method will run every method until a match is found or no methods are left to try', default='all')
+    argparse.add_argument('--categories', '-c', type=str, nargs='*', choices=['intro', 'outro'],
+                           help='What categories to detect on each video, choices are intro and outro. Default detects both', default=['intro', 'outro'])
     argparse.add_argument('--workers', '-w', type=int,
                           help='How many directories to process (threads) at one time (default=4)', default=4)
     argparse.add_argument('--force', '-f', action='store_true',
@@ -432,6 +436,7 @@ def main():
 
     logging.info('Threshold: %s' % args.threshold)
     logging.info('Method: %s' % args.method)
+    logging.info('Categories: %s', ', '.join(args.categories))
     logging.info('Max Workers: %d' % args.workers)
 
     detector = DetectorThreadManager(args)
