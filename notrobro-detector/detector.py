@@ -133,7 +133,7 @@ class Detector:
 
         # create jpg directory for video frames
         name, _ = os.path.splitext(path)
-        name = os.path.join(self.jpg_folder, '%s_%s' % (os.path.basename(name), category))
+        name = os.path.join(self.jpg_folder, f"{os.path.basename(name)}_{category}")
         if not os.path.exists(name):
             os.mkdir(name)
 
@@ -177,7 +177,7 @@ class Detector:
             for i in range(len(scene_transitions)):
                 scene_transitions[i] = str(float(scene_transitions[i]) + begin)
         name, _ = os.path.splitext(path)
-        name = os.path.join(self.jpg_folder, '%s_%s' % (os.path.basename(name), category))
+        name = os.path.join(self.jpg_folder, f"{os.path.basename(name)}_{category}")
         hashlist, _ = self.get_hash_from_dir(name)
 
         return hashlist, scene_transitions
@@ -185,11 +185,11 @@ class Detector:
     def make_timestring(self, timings, category):
         # EDL format is "start end action"
         actions = {'intro': 4, 'outro': 5}
-        return "%s %s %d" % (str(timings[0]), str(timings[1]), actions[category])
+        return f"{str(timings[0])} {str(timings[1])} {actions[category]}"
 
 
     def compare_videos(self, video1, video2, category, video_list):
-        logging.info('processing %s for %s, %d tries left' % (category, os.path.basename(video2), len(video_list)))
+        logging.info(f"processing {category} for {os.path.basename(video2)}, {len(video_list)} tries left")
         result = {}
         first_hash, first_scene = self.get_hash_video(video1, category)
         second_hash, second_scene = self.get_hash_video(video2, category)
@@ -247,13 +247,13 @@ class Detector:
                         result[times['video1']['file']][category] = self.make_timestring(times['video1']['timings'], category)
 
                     if(times['video1']['file'] not in timings_found[category]):
-                        logging.debug('adding %s to found list for: %s' % (category, times['video1']['file']))
+                        logging.debug(f"adding {category} to found list for: {times['video1']['file']}")
                         timings_found[category].append(times['video1']['file'])
 
                     if 'video2' in times:
                         result[videos_process[i]][category] = self.make_timestring(times['video2']['timings'], category)
                 else:
-                    logging.info('No %s found for: %s' % (category, os.path.basename(videos_process[i])))
+                    logging.info(f"No {category} found for: {os.path.basename(videos_process[i])}")
 
             video_prev = videos_process[i]
 
@@ -279,7 +279,7 @@ class Detector:
 
     def generate(self, path, force):
         # jpg folder should have unique path for this thread
-        self.jpg_folder = './%d' % threading.current_thread().ident
+        self.jpg_folder = f"./{threading.current_thread().ident}"
 
         files = os.listdir(path)
         all_files = [os.path.join(path, i) for i in files]
@@ -292,7 +292,7 @@ class Detector:
         # read in any manually excluded files
         exclude_list = []
         if(os.path.exists(os.path.join(path, 'edl_exclude.txt'))):
-            logging.debug('Found exclude file in %s' % path)
+            logging.debug(f"Found exclude file in {path}")
             with open(os.path.join(path, 'edl_exclude.txt')) as f:
                 exclude_list = f.readlines()
             exclude_list = list(map(lambda x: x.strip(), exclude_list))
@@ -320,16 +320,16 @@ class Detector:
                     if(os.path.basename(file) not in exclude_list):
                         videos_process.append(file)
                     else:
-                        logging.info('skipping %s - in exclude list' % os.path.basename(file))
+                        logging.info(f"skipping {os.path.basename(file)} - in exclude list")
                 else:
                     parser = EDLReader(filename + suffix)
 
                     if(parser.hasIntro):
-                        logging.debug('Intro found for %s' % os.path.basename(file))
+                        logging.debug(f"Intro found for {os.path.basename(file)}")
                         intro_found.append(file)
 
                     if(parser.hasOutro):
-                        logging.debug('Outro found for %s' % os.path.basename(file))
+                        logging.debug(f"Outro found for {os.path.basename(file)}")
                         outro_found.append(file)
         else:
             videos_process = copy.deepcopy(videos)
@@ -342,7 +342,7 @@ class Detector:
             videos_process.append(videos[index])
 
         if(len(videos_process) < 2):
-            logging.info("No videos to process in %s" % path)
+            logging.info(f"No videos to process in {path}")
         else:
             videos_process.sort()  # basic ordering for videos by sorting based on season and episode
             timings = self.gen_timings_processed(
@@ -388,7 +388,7 @@ class DetectorThreadManager():
         subprocess.call("stty sane", shell=True)
 
     def start_thread(self, dir):
-        logging.info('Starting detector in: %s' % dir)
+        logging.info(f"Starting detector in: {dir}")
         detector = Detector(self.args.threshold, self.args.method, self.args.categories, self.args.log)
         detector.generate(dir, self.args.force)
 
@@ -425,17 +425,17 @@ def main():
     logging.debug('DEBUG logging enabled')
 
     if not os.path.exists(args.path):
-        logging.info("TV show directory: " + args.path + " not found.")
+        logging.info(f"TV show directory: {args.path} not found.")
         exit()
     else:
         if not os.path.isdir(args.path):
-            logging.info("Path: " + args.path + " is not a directory.")
+            logging.info(f"Path: {args.path} is not a directory.")
             exit()
 
-    logging.info('Threshold: %s' % args.threshold)
-    logging.info('Method: %s' % args.method)
-    logging.info('Categories: %s', ', '.join(args.categories))
-    logging.info('Max Workers: %d' % args.workers)
+    logging.info(f"Threshold: {args.threshold}")
+    logging.info(f"Method: {args.method}")
+    logging.info(f"Categories: {', '.join(args.categories)}")
+    logging.info(f"Max Workers: {args.workers}")
 
     detector = DetectorThreadManager(args)
     detector.start(args.path)
